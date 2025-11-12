@@ -455,6 +455,28 @@ export const InvoiceManagement = () => {
 
                 <div className="grid grid-cols-2 gap-4 py-4">
                   <div className="space-y-2">
+                    <Label>Invoice Number</Label>
+                    <Input
+                      value={formData["INVOICE NO."] || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, "INVOICE NO.": e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Invoice Date</Label>
+                    <Input
+                      type="date"
+                      value={formData["INVOICE DATE"]?.split(" ")[0] || ""}
+                      onChange={(e) =>
+                        setFormData({ 
+                          ...formData, 
+                          "INVOICE DATE": e.target.value + " 00:00:00" 
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Client Name</Label>
                     <Input
                       value={formData.CLIENT || ""}
