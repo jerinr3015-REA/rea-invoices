@@ -54,12 +54,12 @@ export const InvoiceManagement = () => {
   const [formData, setFormData] = useState<Partial<Invoice>>({});
 
   const years = useMemo(() => {
-    const uniqueYears = [...new Set(invoices.map((inv) => inv._year))];
+    const uniqueYears = [...new Set(invoices.map((inv) => inv._year))].filter(year => year && year.trim() !== "");
     return uniqueYears.sort();
   }, [invoices]);
 
   const salesPersons = useMemo(() => {
-    const unique = [...new Set(invoices.map((inv) => inv["Sales Person"]))];
+    const unique = [...new Set(invoices.map((inv) => inv["Sales Person"]))].filter(person => person && person.trim() !== "");
     return unique.sort();
   }, [invoices]);
 
