@@ -229,6 +229,14 @@ export const InvoiceManagement = () => {
   const handleFileUpload = async (file: File) => {
     setIsScanning(true);
     try {
+      console.log('Processing file:', file.name, file.type, file.size);
+      
+      // Validate file
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error('File size must be less than 20MB');
+        return;
+      }
+
       // Convert file to base64
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve, reject) => {
@@ -238,29 +246,46 @@ export const InvoiceManagement = () => {
       });
 
       const imageData = await base64Promise;
-      console.log('Scanning invoice...');
+      console.log('File converted to base64, length:', imageData.length);
+      
+      toast.info('Scanning invoice... This may take a few seconds.');
 
       // Call edge function to extract data
       const { data, error } = await supabase.functions.invoke('scan-invoice', {
         body: { imageData }
       });
 
+      console.log('Response:', { data, error });
+
       if (error) {
         console.error('Scan error:', error);
-        toast.error(error.message || 'Failed to scan invoice');
+        if (error.message.includes('429')) {
+          toast.error('Rate limit exceeded. Please try again in a moment.');
+        } else if (error.message.includes('402')) {
+          toast.error('AI credits exhausted. Please contact support.');
+        } else {
+          toast.error(error.message || 'Failed to scan invoice');
+        }
+        return;
+      }
+
+      if (data?.error) {
+        console.error('API error:', data.error);
+        toast.error(data.error);
         return;
       }
 
       if (data?.data) {
         console.log('Extracted data:', data.data);
         setFormData(data.data);
-        toast.success('Invoice scanned successfully! Please review the extracted data.');
+        toast.success('Invoice scanned successfully! Please review and adjust the data if needed.');
       } else {
-        toast.error('Could not extract invoice data');
+        console.error('No data in response:', data);
+        toast.error('Could not extract invoice data from the image');
       }
     } catch (error) {
       console.error('Error scanning invoice:', error);
-      toast.error('Failed to scan invoice');
+      toast.error(error instanceof Error ? error.message : 'Failed to scan invoice');
     } finally {
       setIsScanning(false);
     }

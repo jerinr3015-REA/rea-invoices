@@ -39,31 +39,27 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
-          {
-            role: 'system',
-            content: `You are an invoice data extraction assistant. Extract the following fields from the invoice image:
-- CLIENT (client name)
-- INVOICE NO. (invoice number)
-- INVOICE DATE (in YYYY-MM-DD format)
-- CLIENT TRN (tax registration number)
-- DESCRIPTION (brief description of items/services)
-- INVOICE SUB-TOTAL (subtotal amount as number)
-- REBATE (rebate amount as number, use 0 if not present)
-- INVOICE SUB-TOTAL AFTER REBATE (subtotal after rebate as number)
-- VAT % AMOUNT (VAT amount as number)
-- TOTAL INVOICE AMOUNT (total amount as number)
-- Sales Person (sales person name)
-
-Return ONLY a JSON object with these exact field names. If a field is not found, use empty string for text fields and "0" for numeric fields.`
-          },
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: 'Extract all invoice details from this image:'
+                text: `Extract invoice details from this image. You must extract these exact fields:
+- CLIENT (client name)
+- INVOICE NO. (invoice number)
+- INVOICE DATE (in YYYY-MM-DD format)
+- CLIENT TRN (tax registration number)
+- DESCRIPTION (brief description of items/services)
+- INVOICE SUB-TOTAL (subtotal amount as number only, no currency)
+- REBATE (rebate amount as number only, use "0" if not present)
+- INVOICE SUB-TOTAL AFTER REBATE (subtotal after rebate as number only)
+- VAT % AMOUNT (VAT amount as number only)
+- TOTAL INVOICE AMOUNT (total amount as number only)
+- Sales Person (sales person name)
+
+Look carefully at the invoice and extract all visible information.`
               },
               {
                 type: 'image_url',
