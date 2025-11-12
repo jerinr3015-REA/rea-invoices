@@ -206,6 +206,7 @@ export const InvoiceManagement = () => {
     setEditingInvoice(null);
     setFormData({
       CLIENT: "",
+      "INVOICE NO.": "",
       "INVOICE DATE": new Date().toISOString().split("T")[0] + " 00:00:00",
       "CLIENT TRN": "",
       DESCRIPTION: "",
