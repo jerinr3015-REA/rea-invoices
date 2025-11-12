@@ -25,12 +25,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Download, Plus, Search, Edit, FileText, TrendingUp, Coins, FileSpreadsheet, FileDown } from "lucide-react";
+import { Download, Plus, Search, Edit, FileText, TrendingUp, Coins, FileSpreadsheet, FileDown, Camera, Upload } from "lucide-react";
 import { toast } from "sonner";
 import invoicesData from "@/data/invoices.json";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { supabase } from "@/integrations/supabase/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +65,7 @@ export const InvoiceManagement = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [formData, setFormData] = useState<Partial<Invoice>>({});
+  const [isScanning, setIsScanning] = useState(false);
 
   const years = useMemo(() => {
     const uniqueYears = [...new Set(invoices.map((inv) => inv._year))].filter(year => year && year.trim() !== "");
@@ -224,6 +226,60 @@ export const InvoiceManagement = () => {
     setIsAddDialogOpen(true);
   };
 
+  const handleFileUpload = async (file: File) => {
+    setIsScanning(true);
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const imageData = await base64Promise;
+      console.log('Scanning invoice...');
+
+      // Call edge function to extract data
+      const { data, error } = await supabase.functions.invoke('scan-invoice', {
+        body: { imageData }
+      });
+
+      if (error) {
+        console.error('Scan error:', error);
+        toast.error(error.message || 'Failed to scan invoice');
+        return;
+      }
+
+      if (data?.data) {
+        console.log('Extracted data:', data.data);
+        setFormData(data.data);
+        toast.success('Invoice scanned successfully! Please review the extracted data.');
+      } else {
+        toast.error('Could not extract invoice data');
+      }
+    } catch (error) {
+      console.error('Error scanning invoice:', error);
+      toast.error('Failed to scan invoice');
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleCameraCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      await handleFileUpload(file);
+    }
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      await handleFileUpload(file);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
@@ -313,6 +369,65 @@ export const InvoiceManagement = () => {
                     {editingInvoice ? "Edit Invoice" : "Add New Invoice"}
                   </DialogTitle>
                 </DialogHeader>
+
+                {!editingInvoice && (
+                  <div className="grid grid-cols-2 gap-3 py-4 border-b">
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Scan Invoice</Label>
+                      <div className="flex gap-2">
+                        <label className="flex-1">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleCameraCapture}
+                            className="hidden"
+                            disabled={isScanning}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full gap-2"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              (e.currentTarget.previousElementSibling as HTMLInputElement)?.click();
+                            }}
+                            disabled={isScanning}
+                          >
+                            <Camera className="h-4 w-4" />
+                            {isScanning ? "Scanning..." : "Take Photo"}
+                          </Button>
+                        </label>
+                        <label className="flex-1">
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                            disabled={isScanning}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full gap-2"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              (e.currentTarget.previousElementSibling as HTMLInputElement)?.click();
+                            }}
+                            disabled={isScanning}
+                          >
+                            <Upload className="h-4 w-4" />
+                            {isScanning ? "Scanning..." : "Upload File"}
+                          </Button>
+                        </label>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Upload an invoice image or PDF to auto-fill the form
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4 py-4">
                   <div className="space-y-2">
                     <Label>Client Name</Label>
