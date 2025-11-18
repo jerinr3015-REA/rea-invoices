@@ -25,7 +25,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Download, Plus, Search, Edit, FileText, TrendingUp, Coins, FileSpreadsheet, FileDown, Camera, Upload, Loader2 } from "lucide-react";
+import { Download, Plus, Search, Edit, FileText, FileSpreadsheet, FileDown, Camera, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -416,49 +416,6 @@ export const InvoiceManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        <Card className="p-4 sm:p-6 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/30 shadow-lg hover:shadow-xl transition-shadow">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="p-3 sm:p-4 bg-primary/20 rounded-xl">
-              <FileText className="h-5 w-5 sm:h-7 sm:w-7 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1">Total Invoices</p>
-              <p className="text-2xl sm:text-4xl font-bold text-foreground">{filteredInvoices.length}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 sm:p-6 bg-gradient-to-br from-gold/5 to-gold/10 border-gold/30 shadow-lg hover:shadow-xl transition-shadow">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="p-3 sm:p-4 bg-gold/20 rounded-xl">
-              <Coins className="h-5 w-5 sm:h-7 sm:w-7 text-gold" />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1">Total Amount</p>
-              <p className="text-xl sm:text-3xl lg:text-4xl font-bold text-foreground">
-                {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AED
-              </p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 sm:p-6 bg-gradient-to-br from-secondary/5 to-secondary/10 border-secondary/30 shadow-lg hover:shadow-xl transition-shadow">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="p-3 sm:p-4 bg-secondary/20 rounded-xl">
-              <TrendingUp className="h-5 w-5 sm:h-7 sm:w-7 text-secondary" />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1">Average Invoice</p>
-              <p className="text-xl sm:text-3xl lg:text-4xl font-bold text-foreground">
-                {filteredInvoices.length > 0 
-                  ? (totalAmount / filteredInvoices.length).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                  : "0.00"} AED
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
       {/* Filters and Actions */}
       <Card className="p-4 sm:p-6 shadow-md">
         <div className="flex flex-col gap-4">
