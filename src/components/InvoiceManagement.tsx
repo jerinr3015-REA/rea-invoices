@@ -38,6 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { migrateInvoicesToDatabase } from "@/lib/migrateInvoices";
+import { deleteAllInvoices } from "@/lib/resetInvoices";
 
 export interface Invoice {
   CLIENT: string;
@@ -77,23 +78,25 @@ export const InvoiceManagement = () => {
     try {
       setIsLoading(true);
       
-      // Check if database has data
-      const { count } = await supabase
-        .from('invoices')
-        .select('*', { count: 'exact', head: true });
+      // Force delete all existing data and reimport
+      toast.info('Resetting database and importing fresh data...');
+      
+      // Delete all existing invoices
+      const deleteResult = await deleteAllInvoices();
+      if (!deleteResult.success) {
+        toast.error('Failed to reset database');
+        setIsLoading(false);
+        return;
+      }
 
-      // If database is empty, run migration
-      if (count === 0) {
-        toast.info('Importing invoice data... This may take a moment.');
-        const result = await migrateInvoicesToDatabase();
-        
-        if (result.success) {
-          toast.success(result.message);
-        } else {
-          toast.error(result.message);
-          setIsLoading(false);
-          return;
-        }
+      // Import fresh data
+      const importResult = await migrateInvoicesToDatabase();
+      if (importResult.success) {
+        toast.success(importResult.message);
+      } else {
+        toast.error(importResult.message);
+        setIsLoading(false);
+        return;
       }
 
       // Fetch all invoices

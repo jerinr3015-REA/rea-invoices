@@ -19,18 +19,6 @@ export interface InvoiceJson {
 export const migrateInvoicesToDatabase = async () => {
   try {
     console.log('Starting migration of invoices to database...');
-    
-    // Check if database already has data
-    const { count, error: countError } = await supabase
-      .from('invoices')
-      .select('*', { count: 'exact', head: true });
-
-    if (countError) throw countError;
-
-    if (count && count > 0) {
-      console.log('Database already has data, skipping migration');
-      return { success: true, message: 'Data already migrated', count };
-    }
 
     // Transform JSON data to database format
     const dbInvoices = (invoicesData as InvoiceJson[]).map(invoice => {
