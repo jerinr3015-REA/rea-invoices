@@ -57,13 +57,13 @@ export const migrateInvoicesToDatabase = async () => {
         invoice_date: invoiceDate,
         client_trn: invoice["CLIENT TRN"] || "",
         description: invoice.DESCRIPTION,
-        invoice_subtotal: parseFloat(invoice["INVOICE SUB-TOTAL"] || "0"),
-        rebate: parseFloat(invoice.REBATE || "0"),
-        invoice_subtotal_after_rebate: parseFloat(invoice["INVOICE SUB-TOTAL AFTER REBATE"] || "0"),
-        vat_amount: parseFloat(invoice["VAT % AMOUNT"] || "0"),
-        total_invoice_amount: parseFloat(invoice["TOTAL INVOICE AMOUNT"] || "0"),
-        sales_person: invoice["Sales Person"],
-        year: invoice._year
+        invoice_subtotal: parseFloat(invoice["INVOICE SUB-TOTAL"] || "0") || 0,
+        rebate: parseFloat(invoice.REBATE || "0") || 0,
+        invoice_subtotal_after_rebate: parseFloat(invoice["INVOICE SUB-TOTAL AFTER REBATE"] || "0") || 0,
+        vat_amount: parseFloat(invoice["VAT % AMOUNT"] || "0") || 0,
+        total_invoice_amount: parseFloat(invoice["TOTAL INVOICE AMOUNT"] || "0") || 0,
+        sales_person: invoice["Sales Person"] || "",
+        year: invoice._year || new Date().getFullYear().toString()
       };
     });
 
