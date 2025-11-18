@@ -20,8 +20,17 @@ export const migrateInvoicesToDatabase = async () => {
   try {
     console.log('Starting migration of invoices to database...');
 
-    // Transform JSON data to database format
-    const dbInvoices = (invoicesData as InvoiceJson[]).map(invoice => {
+    // Transform JSON data to database format, filtering out invalid records
+    const dbInvoices = (invoicesData as InvoiceJson[])
+      .filter(invoice => {
+        // Skip records with missing critical fields
+        if (!invoice.CLIENT || invoice.CLIENT.trim() === '') return false;
+        if (!invoice["INVOICE NO."] || invoice["INVOICE NO."].trim() === '') return false;
+        if (!invoice.DESCRIPTION || invoice.DESCRIPTION.trim() === '') return false;
+        if (!invoice["INVOICE DATE"] || invoice["INVOICE DATE"].trim() === '') return false;
+        return true;
+      })
+      .map(invoice => {
       // Parse date safely
       let invoiceDate: string;
       try {
@@ -51,21 +60,21 @@ export const migrateInvoicesToDatabase = async () => {
         invoiceDate = new Date().toISOString();
       }
 
-      return {
-        client: invoice.CLIENT,
-        invoice_no: invoice["INVOICE NO."],
-        invoice_date: invoiceDate,
-        client_trn: invoice["CLIENT TRN"] || "",
-        description: invoice.DESCRIPTION,
-        invoice_subtotal: parseFloat(invoice["INVOICE SUB-TOTAL"] || "0") || 0,
-        rebate: parseFloat(invoice.REBATE || "0") || 0,
-        invoice_subtotal_after_rebate: parseFloat(invoice["INVOICE SUB-TOTAL AFTER REBATE"] || "0") || 0,
-        vat_amount: parseFloat(invoice["VAT % AMOUNT"] || "0") || 0,
-        total_invoice_amount: parseFloat(invoice["TOTAL INVOICE AMOUNT"] || "0") || 0,
-        sales_person: invoice["Sales Person"] || "",
-        year: invoice._year || new Date().getFullYear().toString()
-      };
-    });
+        return {
+          client: invoice.CLIENT.trim(),
+          invoice_no: invoice["INVOICE NO."].trim(),
+          invoice_date: invoiceDate,
+          client_trn: invoice["CLIENT TRN"] ? invoice["CLIENT TRN"].trim() : "",
+          description: invoice.DESCRIPTION.trim(),
+          invoice_subtotal: parseFloat(invoice["INVOICE SUB-TOTAL"] || "0") || 0,
+          rebate: parseFloat(invoice.REBATE || "0") || 0,
+          invoice_subtotal_after_rebate: parseFloat(invoice["INVOICE SUB-TOTAL AFTER REBATE"] || "0") || 0,
+          vat_amount: parseFloat(invoice["VAT % AMOUNT"] || "0") || 0,
+          total_invoice_amount: parseFloat(invoice["TOTAL INVOICE AMOUNT"] || "0") || 0,
+          sales_person: invoice["Sales Person"] ? invoice["Sales Person"].trim() : "",
+          year: invoice._year ? invoice._year.trim() : new Date().getFullYear().toString()
+        };
+      });
 
     console.log(`Migrating ${dbInvoices.length} invoices...`);
 
