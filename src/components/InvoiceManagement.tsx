@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -25,9 +25,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Download, Plus, Search, Edit, FileText, TrendingUp, Coins, FileSpreadsheet, FileDown, Camera, Upload } from "lucide-react";
+import { Download, Plus, Search, Edit, FileText, TrendingUp, Coins, FileSpreadsheet, FileDown, Camera, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import invoicesData from "@/data/invoices.json";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -55,7 +54,7 @@ export interface Invoice {
 }
 
 export const InvoiceManagement = () => {
-  const [invoices, setInvoices] = useState<Invoice[]>(invoicesData as Invoice[]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [selectedSalesPerson, setSelectedSalesPerson] = useState<string>("all");
@@ -66,6 +65,47 @@ export const InvoiceManagement = () => {
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [formData, setFormData] = useState<Partial<Invoice>>({});
   const [isScanning, setIsScanning] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch invoices from database
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
+
+  const fetchInvoices = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('*')
+        .order('invoice_date', { ascending: false });
+
+      if (error) throw error;
+
+      // Transform database format to component format
+      const transformedData: Invoice[] = (data || []).map(item => ({
+        CLIENT: item.client,
+        "INVOICE NO.": item.invoice_no,
+        "INVOICE DATE": new Date(item.invoice_date).toISOString().replace('T', ' ').substring(0, 19),
+        "CLIENT TRN": item.client_trn || "",
+        DESCRIPTION: item.description,
+        "INVOICE SUB-TOTAL": item.invoice_subtotal.toString(),
+        REBATE: item.rebate ? item.rebate.toString() : "",
+        "INVOICE SUB-TOTAL AFTER REBATE": item.invoice_subtotal_after_rebate.toString(),
+        "VAT % AMOUNT": item.vat_amount.toString(),
+        "TOTAL INVOICE AMOUNT": item.total_invoice_amount.toString(),
+        "Sales Person": item.sales_person,
+        _year: item.year
+      }));
+
+      setInvoices(transformedData);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      toast.error("Failed to load invoices");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const years = useMemo(() => {
     const uniqueYears = [...new Set(invoices.map((inv) => inv._year))].filter(year => year && year.trim() !== "");
@@ -179,27 +219,52 @@ export const InvoiceManagement = () => {
     toast.success("PDF file downloaded successfully");
   };
 
-  const handleSaveInvoice = () => {
-    if (editingInvoice) {
-      setInvoices(
-        invoices.map((inv) =>
-          inv["INVOICE NO."] === editingInvoice["INVOICE NO."]
-            ? { ...inv, ...formData }
-            : inv
-        )
-      );
-      toast.success("Invoice updated successfully");
-    } else {
-      const newInvoice = {
-        ...formData,
-        "INVOICE NO.": `24-${String(invoices.length + 1).padStart(4, "0")}`,
-      } as Invoice;
-      setInvoices([...invoices, newInvoice]);
-      toast.success("Invoice added successfully");
+  const handleSaveInvoice = async () => {
+    try {
+      // Transform component format to database format
+      const dbData = {
+        client: formData.CLIENT || "",
+        invoice_no: formData["INVOICE NO."] || "",
+        invoice_date: formData["INVOICE DATE"] ? new Date(formData["INVOICE DATE"]).toISOString() : new Date().toISOString(),
+        client_trn: formData["CLIENT TRN"] || "",
+        description: formData.DESCRIPTION || "",
+        invoice_subtotal: parseFloat(formData["INVOICE SUB-TOTAL"] || "0"),
+        rebate: parseFloat(formData.REBATE || "0"),
+        invoice_subtotal_after_rebate: parseFloat(formData["INVOICE SUB-TOTAL AFTER REBATE"] || "0"),
+        vat_amount: parseFloat(formData["VAT % AMOUNT"] || "0"),
+        total_invoice_amount: parseFloat(formData["TOTAL INVOICE AMOUNT"] || "0"),
+        sales_person: formData["Sales Person"] || "",
+        year: formData._year || new Date().getFullYear().toString()
+      };
+
+      if (editingInvoice) {
+        // Update existing invoice
+        const { error } = await supabase
+          .from('invoices')
+          .update(dbData)
+          .eq('invoice_no', editingInvoice["INVOICE NO."]);
+
+        if (error) throw error;
+        toast.success("Invoice updated successfully");
+      } else {
+        // Insert new invoice
+        const { error } = await supabase
+          .from('invoices')
+          .insert([dbData]);
+
+        if (error) throw error;
+        toast.success("Invoice added successfully");
+      }
+
+      // Refresh the list
+      await fetchInvoices();
+      setIsAddDialogOpen(false);
+      setEditingInvoice(null);
+      setFormData({});
+    } catch (error: any) {
+      console.error("Error saving invoice:", error);
+      toast.error(error.message || "Failed to save invoice");
     }
-    setIsAddDialogOpen(false);
-    setEditingInvoice(null);
-    setFormData({});
   };
 
   const openAddDialog = () => {
@@ -638,50 +703,63 @@ export const InvoiceManagement = () => {
       <Card className="shadow-md">
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <div className="inline-block min-w-full align-middle">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="whitespace-nowrap">Invoice No.</TableHead>
-                  <TableHead className="whitespace-nowrap">Date</TableHead>
-                  <TableHead className="whitespace-nowrap">Client</TableHead>
-                  <TableHead className="whitespace-nowrap">Description</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Sub-Total</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">VAT</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Total</TableHead>
-                  <TableHead className="whitespace-nowrap">Sales Person</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredInvoices.map((invoice) => (
-                  <TableRow key={invoice["INVOICE NO."]}>
-                    <TableCell className="font-medium whitespace-nowrap">{invoice["INVOICE NO."]}</TableCell>
-                    <TableCell className="whitespace-nowrap">{invoice["INVOICE DATE"].split(" ")[0]}</TableCell>
-                    <TableCell className="whitespace-nowrap">{invoice.CLIENT}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{invoice.DESCRIPTION}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
-                      {parseFloat(invoice["INVOICE SUB-TOTAL"] || "0").toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
-                      {parseFloat(invoice["VAT % AMOUNT"] || "0").toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium whitespace-nowrap">
-                      {parseFloat(invoice["TOTAL INVOICE AMOUNT"] || "0").toFixed(2)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">{invoice["Sales Person"]}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditDialog(invoice)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+            {isLoading ? (
+              <div className="flex items-center justify-center p-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-3 text-muted-foreground">Loading invoices...</span>
+              </div>
+            ) : filteredInvoices.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-12 text-center">
+                <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <p className="text-lg font-medium text-muted-foreground">No invoices found</p>
+                <p className="text-sm text-muted-foreground/70 mt-2">Try adjusting your filters or add a new invoice</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">Invoice No.</TableHead>
+                    <TableHead className="whitespace-nowrap">Date</TableHead>
+                    <TableHead className="whitespace-nowrap">Client</TableHead>
+                    <TableHead className="whitespace-nowrap">Description</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Sub-Total</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">VAT</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Total</TableHead>
+                    <TableHead className="whitespace-nowrap">Sales Person</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredInvoices.map((invoice) => (
+                    <TableRow key={invoice["INVOICE NO."]}>
+                      <TableCell className="font-medium whitespace-nowrap">{invoice["INVOICE NO."]}</TableCell>
+                      <TableCell className="whitespace-nowrap">{invoice["INVOICE DATE"].split(" ")[0]}</TableCell>
+                      <TableCell className="whitespace-nowrap">{invoice.CLIENT}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{invoice.DESCRIPTION}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        {parseFloat(invoice["INVOICE SUB-TOTAL"] || "0").toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        {parseFloat(invoice["VAT % AMOUNT"] || "0").toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium whitespace-nowrap">
+                        {parseFloat(invoice["TOTAL INVOICE AMOUNT"] || "0").toFixed(2)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{invoice["Sales Person"]}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDialog(invoice)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </div>
       </Card>

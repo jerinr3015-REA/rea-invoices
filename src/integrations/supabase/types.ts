@@ -14,16 +14,97 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      invoices: {
+        Row: {
+          client: string
+          client_trn: string | null
+          created_at: string | null
+          description: string
+          id: string
+          invoice_date: string
+          invoice_no: string
+          invoice_subtotal: number
+          invoice_subtotal_after_rebate: number
+          rebate: number | null
+          sales_person: string
+          total_invoice_amount: number
+          updated_at: string | null
+          vat_amount: number
+          year: string
+        }
+        Insert: {
+          client: string
+          client_trn?: string | null
+          created_at?: string | null
+          description: string
+          id?: string
+          invoice_date: string
+          invoice_no: string
+          invoice_subtotal: number
+          invoice_subtotal_after_rebate: number
+          rebate?: number | null
+          sales_person: string
+          total_invoice_amount: number
+          updated_at?: string | null
+          vat_amount: number
+          year: string
+        }
+        Update: {
+          client?: string
+          client_trn?: string | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          invoice_date?: string
+          invoice_no?: string
+          invoice_subtotal?: number
+          invoice_subtotal_after_rebate?: number
+          rebate?: number | null
+          sales_person?: string
+          total_invoice_amount?: number
+          updated_at?: string | null
+          vat_amount?: number
+          year?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_any_role: { Args: { _user_id: string }; Returns: boolean }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "estimator"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +231,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "estimator"],
+    },
   },
 } as const
