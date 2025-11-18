@@ -79,6 +79,7 @@ export const InvoiceManagement = () => {
       setIsLoading(true);
       
       // Force delete all existing data and reimport
+      console.log('Resetting database...');
       toast.info('Resetting database and importing fresh data...');
       
       // Delete all existing invoices
@@ -89,10 +90,15 @@ export const InvoiceManagement = () => {
         return;
       }
 
+      console.log('Running migration...');
       // Import fresh data
       const importResult = await migrateInvoicesToDatabase();
+      console.log('Migration result:', importResult);
+      
       if (importResult.success) {
         toast.success(importResult.message);
+        // Wait a moment for database to finalize
+        await new Promise(resolve => setTimeout(resolve, 500));
       } else {
         toast.error(importResult.message);
         setIsLoading(false);
@@ -100,7 +106,9 @@ export const InvoiceManagement = () => {
       }
 
       // Fetch all invoices
+      console.log('Fetching invoices...');
       await fetchInvoices();
+      console.log('Data initialization complete');
     } catch (error) {
       console.error("Error initializing data:", error);
       toast.error("Failed to initialize data");
