@@ -37,6 +37,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { migrateInvoicesToDatabase } from "@/lib/migrateInvoices";
 
 export interface Invoice {
   CLIENT: string;
@@ -67,14 +68,45 @@ export const InvoiceManagement = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch invoices from database
+  // Fetch invoices from database and auto-migrate if empty
   useEffect(() => {
-    fetchInvoices();
+    initializeData();
   }, []);
+
+  const initializeData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Check if database has data
+      const { count } = await supabase
+        .from('invoices')
+        .select('*', { count: 'exact', head: true });
+
+      // If database is empty, run migration
+      if (count === 0) {
+        toast.info('Importing invoice data... This may take a moment.');
+        const result = await migrateInvoicesToDatabase();
+        
+        if (result.success) {
+          toast.success(result.message);
+        } else {
+          toast.error(result.message);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Fetch all invoices
+      await fetchInvoices();
+    } catch (error) {
+      console.error("Error initializing data:", error);
+      toast.error("Failed to initialize data");
+      setIsLoading(false);
+    }
+  };
 
   const fetchInvoices = async () => {
     try {
-      setIsLoading(true);
       const { data, error } = await supabase
         .from('invoices')
         .select('*')
